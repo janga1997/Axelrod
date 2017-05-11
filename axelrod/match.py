@@ -1,13 +1,18 @@
-from axelrod.actions import Actions
+from axelrod.actions import Actions, Action
+from axelrod.player import Player
 from axelrod.game import Game
+from axelrod import DeterministicCache
 import axelrod.interaction_utils as iu
 from .deterministic_cache import DeterministicCache
 
+from collections import Counter
+from typing import Tuple, List, Union
 
 C, D = Actions.C, Actions.D
 
+Score = Union[int, float]
 
-def is_stochastic(players, noise):
+def is_stochastic(players: List[Player], noise: float) -> Union[float, bool]:
     """Determines if a match is stochastic -- true if there is noise or if any
     of the players involved is stochastic."""
     return (noise or any(p.classifier['stochastic'] for p in players))
@@ -15,8 +20,9 @@ def is_stochastic(players, noise):
 
 class Match(object):
 
-    def __init__(self, players, turns, game=None, deterministic_cache=None,
-                 noise=0, match_attributes=None):
+    def __init__(self, players: Tuple[Player, Player], turns: int,
+                 game: Game=None, deterministic_cache: DeterministicCache=None,
+                 noise: float=0, match_attributes: dict=None) -> None:
         """
         Parameters
         ----------
@@ -35,7 +41,7 @@ class Match(object):
             The default is to use the correct values for turns, game and noise
             but these can be overridden if desired.
         """
-        self.result = []
+        self.result = [] # type: List[Tuple[Action, Action]]
         self.turns = turns
         self._cache_key = (players[0], players[1], turns)
         self.noise = noise
@@ -62,11 +68,11 @@ class Match(object):
         self.players = list(players)
 
     @property
-    def players(self):
+    def players(self) -> List[Player]:
         return self._players
 
     @players.setter
-    def players(self, players):
+    def players(self, players: List[Player]):
         """Ensure that players are passed the match attributes"""
         newplayers = []
         for player in players:
@@ -75,7 +81,7 @@ class Match(object):
         self._players = newplayers
 
     @property
-    def _stochastic(self):
+    def _stochastic(self) -> Union[float, bool]:
         """
         A boolean to show whether a match between two players would be
         stochastic.
@@ -83,7 +89,7 @@ class Match(object):
         return is_stochastic(self.players, self.noise)
 
     @property
-    def _cache_update_required(self):
+    def _cache_update_required(self) -> bool:
         """
         A boolean to show whether the deterministic cache should be updated.
         """
@@ -94,7 +100,7 @@ class Match(object):
             )
         )
 
-    def play(self):
+    def play(self) -> List[Tuple[Action, Action]]:
         """
         The resulting list of actions from a match between two players.
 
@@ -130,19 +136,19 @@ class Match(object):
         self.result = result
         return result
 
-    def scores(self):
+    def scores(self) -> List[Tuple[Score, Score]]:
         """Returns the scores of the previous Match plays."""
         return iu.compute_scores(self.result, self.game)
 
-    def final_score(self):
+    def final_score(self) -> Tuple[Score, Score]:
         """Returns the final score for a Match."""
         return iu.compute_final_score(self.result, self.game)
 
-    def final_score_per_turn(self):
+    def final_score_per_turn(self) -> Tuple[Score, Score]:
         """Returns the mean score per round for a Match."""
         return iu.compute_final_score_per_turn(self.result, self.game)
 
-    def winner(self):
+    def winner(self) -> Player:
         """Returns the winner of the Match."""
         winner_index = iu.compute_winner_index(self.result, self.game)
         if winner_index is False:  # No winner
@@ -151,28 +157,28 @@ class Match(object):
             return None
         return self.players[winner_index]
 
-    def cooperation(self):
+    def cooperation(self) -> Tuple[int, int]:
         """Returns the count of cooperations by each player."""
         return iu.compute_cooperations(self.result)
 
-    def normalised_cooperation(self):
+    def normalised_cooperation(self) -> Tuple[int, int]:
         """Returns the count of cooperations by each player per turn."""
         return iu.compute_normalised_cooperation(self.result)
 
-    def state_distribution(self):
+    def state_distribution(self) -> Counter:
         """
         Returns the count of each state for a set of interactions.
         """
         return iu.compute_state_distribution(self.result)
 
-    def normalised_state_distribution(self):
+    def normalised_state_distribution(self) -> Counter:
         """
         Returns the normalized count of each state for a set of interactions.
         """
         return iu.compute_normalised_state_distribution(self.result)
 
-    def sparklines(self, c_symbol='█', d_symbol=' '):
+    def sparklines(self, c_symbol='█', d_symbol=' ') -> str:
         return iu.compute_sparklines(self.result, c_symbol, d_symbol)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self.turns
